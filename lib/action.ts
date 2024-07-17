@@ -1,6 +1,9 @@
 "use server";
 
-import { useSearchParams } from "next/navigation";
+import { isRedirectError } from "next/dist/client/components/redirect";
+import { ResponseCookie } from "next/dist/compiled/@edge-runtime/cookies";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 export const action = async (formData: FormData) => {
 	const status = formData.get("status");
@@ -47,5 +50,42 @@ export const getTodos = async (searchParams: Params) => {
 		return result;
 	} catch (error) {
 		console.error(error);
+	}
+};
+
+const config: Partial<ResponseCookie> = {
+	maxAge: 60 * 60 * 24 * 7, // 1 week
+	httpOnly: true,
+	domain: process.env.DOMAIN || "localhost",
+	path: "/",
+	sameSite: "lax",
+	secure: true,
+};
+export const loginHandler = async (formData: FormData) => {
+	const credentials = {
+		identifier: formData.get("email"),
+		password: formData.get("password"),
+	};
+	try {
+		const response = await fetch(`${process.env.API_URL}/api/auth/local`, {
+			method: "post",
+			body: JSON.stringify(credentials),
+			headers: {
+				"content-type": "application/json",
+			},
+			cache: "no-cache",
+		});
+		const result = await response.json();
+		if (result.error) {
+			console.log("error========", result.error);
+		}
+		cookies().set("token", result.jwt, config);
+		redirect("/todos");
+	} catch (error) {
+		if (isRedirectError(error)) {
+			throw error;
+		} else {
+			console.error(error);
+		}
 	}
 };
