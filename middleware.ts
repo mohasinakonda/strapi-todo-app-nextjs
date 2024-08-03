@@ -5,7 +5,7 @@ import { getMe } from "./lib/load-me";
 export async function middleware(request: NextRequest) {
 	const user = await getMe();
 	const url = request.nextUrl.clone();
-	if (!user.ok) {
+	if (!user.ok && url.pathname === "/todos") {
 		url.pathname = "/login";
 		return NextResponse.redirect(url);
 	}
